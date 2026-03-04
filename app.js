@@ -52,10 +52,91 @@ function fullClear() {
   display.value = "0";
 }
 
+/* Calcolo recursivo per il fattoriale*/
+function recursive(num) {
+  if (num <= 0) return 1;
+  return num * recursive(num - 1);
+}
+
+/*Inserimento del fattoriale "!"*/
+function factorial(esclam) {
+  const dividOper = display.value.split(/[\+\-\×\÷]/);
+  let ultimoNum = dividOper[dividOper.length - 1];
+  if (ultimoNum === "") return;
+  if (!ultimoNum.includes(esclam)) {
+    display.value += esclam;
+  }
+}
+/* Percentage sign*/
+function percentage(p) {
+  const dividOper = display.value.split(/[\+\-\×\÷]/);
+  let ultimoNum = dividOper[dividOper.length - 1];
+  if (ultimoNum === "") return;
+  display.value += p;
+}
+
+/**/
+function percentCalc(v) {
+  const pNum = [...v].filter((v) => v === "%").length;
+  const num = [...v].filter((v) => v !== "%").join("");
+  const perc = 0.01 ** pNum;
+  return num * perc;
+}
+
 /* Esecuzione operazione */
 function execute() {
+  let union;
+
   try {
-    const replaced = display.value.replaceAll("×", "*").replaceAll("÷", "/");
+    if (display.value.includes("!") || display.value.includes("%")) {
+      const factorialFirst = display.value
+        .split(/[\+\-\×\÷]/)
+        .map((v) => {
+          if (v.includes("!") && v.includes("%")) {
+            const perV = [...v].filter((v) => v === "%").length;
+            if (
+              v.indexOf("!") < v.indexOf("%") &&
+              Number.isInteger(+v.slice(0, -perV - 1))
+            ) {
+              const rec = recursive(v.slice(0, -perV - 1)) + "%".repeat(perV);
+              v = percentCalc(rec);
+            }
+          } else if (v.includes("!")) {
+            if (Number.isInteger(+v.slice(0, -1))) {
+              v = recursive(v.slice(0, -1));
+            } else {
+              throw new Error();
+            }
+          } else if (v.includes("%")) {
+            v = percentCalc(v);
+          } else {
+            throw new Error();
+          }
+          return v;
+        })
+        .join(",");
+
+      const op = display.value.split("").filter((o) => operators.includes(o));
+
+      union = [...factorialFirst]
+        .map((v) => {
+          let i = 0;
+          if (v === ",") {
+            v = op[i];
+            i++;
+          }
+          return v;
+        })
+        .join("");
+    }
+
+    const isContain =
+      display.value.includes("!") || display.value.includes("%")
+        ? union
+        : display.value;
+
+    const replaced = isContain.replaceAll("×", "*").replaceAll("÷", "/");
+
     display.value = eval(replaced);
     if (!isFinite(display.value) || isNaN(display.value))
       display.value = "Errore";
@@ -74,6 +155,7 @@ buttonsContainer.addEventListener("click", (e) => {
   const action = button.dataset.action;
   const operator = button.dataset.operator;
   const point = button.dataset.point;
+  const operation = button.dataset.operation;
 
   if (number !== undefined) {
     firstPrint(number);
@@ -81,6 +163,10 @@ buttonsContainer.addEventListener("click", (e) => {
     singleOperator(operator);
   } else if (point === ".") {
     pointController(point);
+  } else if (operation === "!") {
+    factorial(operation);
+  } else if (operation === "%") {
+    percentage(operation);
   } else if (action === "CE") {
     clearEntry();
   } else if (action === "rollback") {
@@ -97,9 +183,17 @@ document.addEventListener("keydown", (e) => {
 
   if (
     !allKeys.includes(keyPressed) &&
-    !["Enter", "Backspace", "Delete", "Escape", ".", "=", "c"].includes(
-      keyPressed,
-    )
+    ![
+      "Enter",
+      "Backspace",
+      "Delete",
+      "Escape",
+      ".",
+      "=",
+      "c",
+      "!",
+      "%",
+    ].includes(keyPressed)
   )
     return;
 
@@ -115,6 +209,10 @@ document.addEventListener("keydown", (e) => {
     } else {
       singleOperator(keyPressed);
     }
+  } else if (keyPressed === "!") {
+    factorial(keyPressed);
+  } else if (keyPressed === "%") {
+    percentage(keyPressed);
   } else if (keyPressed === "Enter" || keyPressed === "=") {
     execute();
   } else if (keyPressed === "Backspace") {
@@ -128,12 +226,9 @@ document.addEventListener("keydown", (e) => {
 
 /*TODO: Adding buttons :
   1. x^y   x elevato alla y
-  2. % percentuale
-  3. x! fattoriale
   4. () parrentesi
   5. radice x 
   6. 1/x
-  7. log base 10
-
+  7. log base e
   7. cronologia che viene stampato il calcolo quando clicchi su "="
 */
