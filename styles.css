@@ -97,10 +97,3 @@ button[data-action="equals"] {
 button[data-action="equals"]:hover {
   background-color: #e19d5c;
 }
-
-/* .power {
-  position: absolute;
-  top: 16px;
-  right: 25px;
-}
- */
