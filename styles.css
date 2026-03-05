@@ -97,3 +97,13 @@ button[data-action="equals"] {
 button[data-action="equals"]:hover {
   background-color: #e19d5c;
 }
+
+.rad {
+  position: relative;
+}
+
+#rad {
+  position: absolute;
+  top: 20px;
+  left: 25px;
+}

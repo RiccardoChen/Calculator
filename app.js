@@ -6,229 +6,258 @@ const keyOperators = ["+", "-", "*", "/"];
 const nums = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
 const allKeys = [...keyOperators, ...nums];
 
-/* Controlla se il valore di partenza è 0.
-Se si viene sostituito con un altro numero.
-Altrimenti concatena con altri numeri */
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+const lastChar = () => display.value.slice(-1);
+const endsWith = (s) => display.value.endsWith(s);
+const isOperator = (c) => operators.includes(c);
+
+// ─── Input numerico ──────────────────────────────────────────────────────────
+
 function firstPrint(num) {
-  if (display.value === "0") display.value = num;
-  else display.value += num;
+  const val = display.value;
+
+  if (val === "0") {
+    display.value = num;
+  } else if (val.endsWith("ln(0)")) {
+    display.value = val.slice(0, -2) + num + ")";
+  } else if (val.endsWith("ln()")) {
+    display.value = val.slice(0, -1) + num + ")";
+  } else if (val.endsWith(")")) {
+    display.value += "×" + num;
+  } else {
+    display.value += num;
+  }
 }
 
-/* Controlla se l'operatore non sia duplicata, 
-o se c'è il punto sostituiscilo */
+// ─── Operatori ───────────────────────────────────────────────────────────────
+
 function singleOperator(ope) {
-  const lastChar = display.value.slice(-1);
+  const last = lastChar();
   const penultimate = display.value.slice(-2, -1);
 
-  if (lastChar === "." && operators.includes(penultimate)) {
+  if (last === "." && isOperator(penultimate)) {
     display.value = display.value.slice(0, -2) + ope;
-  } else if (operators.includes(lastChar) || lastChar === ".") {
+  } else if (isOperator(last) || last === ".") {
     display.value = display.value.slice(0, -1) + ope;
   } else {
     display.value += ope;
   }
 }
 
-/* Controllo sulla duplicazione/ripetizione del punto */
+// ─── Punto decimale ──────────────────────────────────────────────────────────
+
 function pointController(point) {
-  const dividOper = display.value.split(/[\+\-\×\÷]/);
-  const ultimoNum = dividOper[dividOper.length - 1];
-  if (!ultimoNum.includes(".")) display.value += point;
+  const parts = display.value.split(/[+\-×÷]/);
+  if (!parts.at(-1).includes(".")) display.value += point;
 }
 
-/* CE che rimuove l'ultima cifra inserita */
-function clearEntry() {
-  display.value = display.value.replace(/[0-9.]+$/, "");
-  if (display.value === "") display.value = "0";
-}
-/* Cancella l'ultima cifra od operazione inserita */
-function rollBack() {
-  display.value = display.value.slice(0, -1);
-  if (display.value === "") display.value = "0";
-}
+// ─── Cancellazione ───────────────────────────────────────────────────────────
 
-/* Cancellazione completa risettando tutto a 0 */
-function fullClear() {
+const clearEntry = () => {
+  display.value = display.value.replace(/[0-9.!%]+$/, "") || "0";
+};
+
+const rollBack = () => {
+  display.value = display.value.slice(0, -1) || "0";
+};
+
+const fullClear = () => {
   display.value = "0";
-}
+};
 
-/* Calcolo recursivo per il fattoriale*/
+// ─── Fattoriale e percentuale ─────────────────────────────────────────────────
+
 function recursive(num) {
-  if (num <= 0) return 1;
-  return num * recursive(num - 1);
+  return num <= 0 ? 1 : num * recursive(num - 1);
 }
 
-/*Inserimento del fattoriale "!"*/
 function factorial(esclam) {
-  const dividOper = display.value.split(/[\+\-\×\÷]/);
-  let ultimoNum = dividOper[dividOper.length - 1];
-  if (ultimoNum === "") return;
-  if (!ultimoNum.includes(esclam)) {
-    display.value += esclam;
+  const parts = display.value.split(/[+\-×÷]/);
+  const last = parts.at(-1);
+  if (last && !last.includes(esclam)) display.value += esclam;
+}
+
+function percentage(p) {
+  const parts = display.value.split(/[+\-×÷]/);
+  if (parts.at(-1)) display.value += p;
+}
+
+function percentCalc(v) {
+  const count = [...v].filter((c) => c === "%").length;
+  const num = [...v].filter((c) => c !== "%").join("");
+  return num * 0.01 ** count;
+}
+
+// ─── Logaritmo naturale ───────────────────────────────────────────────────────
+
+function showIn() {
+  if (isOperator(lastChar())) return;
+
+  if (display.value === "0") {
+    display.value = "ln(0)";
+    return;
+  }
+
+  const match = display.value.match(/([^+\-×÷]+)$/);
+  if (match) {
+    const rest = display.value.slice(0, -match[0].length);
+    display.value = rest + "ln(" + match[0] + ")";
   }
 }
-/* Percentage sign*/
-function percentage(p) {
-  const dividOper = display.value.split(/[\+\-\×\÷]/);
-  let ultimoNum = dividOper[dividOper.length - 1];
-  if (ultimoNum === "") return;
-  display.value += p;
+
+// ─── Parentesi tonde ───────────────────────────────────────────────────────────────
+
+function parOpen(p) {
+  if (display.value === "0") {
+    display.value = p;
+    return;
+  }
+  const lastChar = display.value.slice(-1);
+
+  if (/\d/.test(lastChar) || lastChar === ")" || lastChar === "!") {
+    display.value += "×" + p;
+  } else {
+    display.value += p;
+  }
 }
 
-/**/
-function percentCalc(v) {
-  const pNum = [...v].filter((v) => v === "%").length;
-  const num = [...v].filter((v) => v !== "%").join("");
-  const perc = 0.01 ** pNum;
-  return num * perc;
+function parClose(p) {
+  const lastChar = display.value.slice(-1);
+
+  const opPar = [...display.value].filter((v) => v === "(").length;
+  const clPar = [...display.value].filter((v) => v === ")").length;
+
+  if (opPar > clPar) {
+    if (!operators.includes(lastChar) && lastChar !== "(" && lastChar !== ".") {
+      display.value += p;
+    }
+  }
 }
 
-/* Esecuzione operazione */
+// ─── Esecuzione ───────────────────────────────────────────────────────────────
+
 function execute() {
-  let union;
-
   try {
-    if (display.value.includes("!") || display.value.includes("%")) {
-      const factorialFirst = display.value
-        .split(/[\+\-\×\÷]/)
-        .map((v) => {
-          if (v.includes("!") && v.includes("%")) {
-            const perV = [...v].filter((v) => v === "%").length;
-            if (
-              v.indexOf("!") < v.indexOf("%") &&
-              Number.isInteger(+v.slice(0, -perV - 1))
-            ) {
-              const rec = recursive(v.slice(0, -perV - 1)) + "%".repeat(perV);
-              v = percentCalc(rec);
-            }
-          } else if (v.includes("!")) {
-            if (Number.isInteger(+v.slice(0, -1))) {
-              v = recursive(v.slice(0, -1));
-            } else {
-              throw new Error();
-            }
-          } else if (v.includes("%")) {
-            v = percentCalc(v);
-          } else {
-            throw new Error();
-          }
-          return v;
-        })
-        .join(",");
+    let expr = display.value;
 
-      const op = display.value.split("").filter((o) => operators.includes(o));
+    // ─── Risolve ricorsivamente ln annidati ──────────────────────────────────
+    function resolveLn(expression) {
+      // Caso base: nessun ln presente, ritorna l'espressione
+      if (!expression.includes("ln(")) return expression;
 
-      union = [...factorialFirst]
-        .map((v) => {
-          let i = 0;
-          if (v === ",") {
-            v = op[i];
-            i++;
-          }
-          return v;
-        })
-        .join("");
+      return expression.replace(/ln\(([^()]*)\)/g, (_, inner) => {
+        let innerVal = inner;
+
+        // Calcola fattoriale dentro ln
+        if (innerVal.includes("!")) {
+          if (!Number.isInteger(+innerVal.slice(0, -1))) throw new Error();
+          innerVal = recursive(innerVal.slice(0, -1));
+        }
+
+        // Calcola percentuale dentro ln
+        if (String(innerVal).includes("%")) {
+          innerVal = percentCalc(String(innerVal));
+        }
+
+        // Valuta l'espressione numerica dentro le parentesi
+        const innerResult = eval(
+          String(innerVal).replaceAll("×", "*").replaceAll("÷", "/"),
+        );
+
+        return Math.log(innerResult);
+      });
     }
 
-    const isContain =
-      display.value.includes("!") || display.value.includes("%")
-        ? union
-        : display.value;
+    // Continua a risolvere finché ci sono ln annidati
+    let prev;
+    do {
+      prev = expr;
+      expr = resolveLn(expr);
+    } while (expr !== prev && String(expr).includes("ln("));
 
-    const replaced = isContain.replaceAll("×", "*").replaceAll("÷", "/");
+    // ─── Pre-processa ! e % fuori da ln ──────────────────────────────────────
+    if (String(expr).includes("!") || String(expr).includes("%")) {
+      const op = [...display.value].filter(isOperator);
 
-    display.value = eval(replaced);
-    if (!isFinite(display.value) || isNaN(display.value))
-      display.value = "Errore";
-  } catch (e) {
+      const parts = display.value
+        .split(/[+\-×÷]/)
+        .filter((v) => !v.startsWith("ln"))
+        .map((v) => {
+          if (v.includes("!") && v.includes("%")) {
+            const perCount = [...v].filter((c) => c === "%").length;
+            const base = v.slice(0, -perCount - 1);
+            if (v.indexOf("!") < v.indexOf("%") && Number.isInteger(+base)) {
+              return percentCalc(recursive(base) + "%".repeat(perCount));
+            }
+          }
+          if (v.includes("!")) {
+            if (!Number.isInteger(+v.slice(0, -1))) throw new Error();
+            return recursive(v.slice(0, -1));
+          }
+          if (v.includes("%")) return percentCalc(v);
+          throw new Error();
+        });
+
+      expr = parts.reduce(
+        (acc, val, i) => acc + (i > 0 ? op[i - 1] : "") + val,
+        "",
+      );
+    }
+
+    // ─── Valutazione finale ───────────────────────────────────────────────────
+    const result = eval(String(expr).replaceAll("×", "*").replaceAll("÷", "/"));
+
+    display.value = isFinite(result) && !isNaN(result) ? result : "Errore";
+  } catch {
     display.value = "Errore";
   }
 }
 
+// ─── Event delegation (click) ─────────────────────────────────────────────────
+
 buttonsContainer.addEventListener("click", (e) => {
-  const button = e.target;
+  if (!e.target.matches("button")) return;
 
-  if (!button.matches("button")) return;
+  const { number, action, operator, point, operation } = e.target.dataset;
 
-  /* event delegations */
-  const number = button.dataset.number;
-  const action = button.dataset.action;
-  const operator = button.dataset.operator;
-  const point = button.dataset.point;
-  const operation = button.dataset.operation;
-
-  if (number !== undefined) {
-    firstPrint(number);
-  } else if (operators.includes(operator)) {
-    singleOperator(operator);
-  } else if (point === ".") {
-    pointController(point);
-  } else if (operation === "!") {
-    factorial(operation);
-  } else if (operation === "%") {
-    percentage(operation);
-  } else if (action === "CE") {
-    clearEntry();
-  } else if (action === "rollback") {
-    rollBack();
-  } else if (action === "clear") {
-    fullClear();
-  } else if (action === "equals") {
-    execute();
-  }
+  if (number !== undefined) firstPrint(number);
+  else if (isOperator(operator)) singleOperator(operator);
+  else if (point === ".") pointController(point);
+  else if (operation === "!") factorial(operation);
+  else if (operation === "%") percentage(operation);
+  else if (operation === "ln") showIn();
+  else if (operation === "(") parOpen(operation);
+  else if (operation === ")") parClose(operation);
+  else if (action === "CE") clearEntry();
+  else if (action === "rollback") rollBack();
+  else if (action === "clear") fullClear();
+  else if (action === "equals") execute();
 });
+
+// ─── Keyboard support ────────────────────────────────────────────────────────
+
+const keyMap = {
+  Enter: execute,
+  "=": execute,
+  Backspace: rollBack,
+  Delete: clearEntry,
+  Escape: fullClear,
+  c: fullClear,
+  ".": () => pointController("."),
+  "!": () => factorial("!"),
+  "%": () => percentage("%"),
+  l: showIn,
+  "*": () => singleOperator("×"),
+  "/": () => singleOperator("÷"),
+};
 
 document.addEventListener("keydown", (e) => {
-  const keyPressed = e.key;
+  const key = e.key;
 
-  if (
-    !allKeys.includes(keyPressed) &&
-    ![
-      "Enter",
-      "Backspace",
-      "Delete",
-      "Escape",
-      ".",
-      "=",
-      "c",
-      "!",
-      "%",
-    ].includes(keyPressed)
-  )
-    return;
+  if (!allKeys.includes(key) && !keyMap[key]) return;
 
-  if (nums.includes(keyPressed)) {
-    firstPrint(keyPressed);
-  } else if (keyPressed === ".") {
-    pointController(keyPressed);
-  } else if (keyOperators.includes(keyPressed)) {
-    if (keyPressed === "*") {
-      singleOperator("×");
-    } else if (keyPressed === "/") {
-      singleOperator("÷");
-    } else {
-      singleOperator(keyPressed);
-    }
-  } else if (keyPressed === "!") {
-    factorial(keyPressed);
-  } else if (keyPressed === "%") {
-    percentage(keyPressed);
-  } else if (keyPressed === "Enter" || keyPressed === "=") {
-    execute();
-  } else if (keyPressed === "Backspace") {
-    rollBack();
-  } else if (keyPressed === "Delete") {
-    clearEntry();
-  } else if (keyPressed === "Escape" || keyPressed.toLowerCase() === "c") {
-    fullClear();
-  }
+  if (nums.includes(key)) return firstPrint(key);
+  if (keyOperators.slice(0, 2).includes(key)) return singleOperator(key); // + e -
+  if (keyMap[key]) keyMap[key]();
 });
-
-/*TODO: Adding buttons :
-  1. x^y   x elevato alla y
-  4. () parrentesi
-  5. radice x 
-  6. 1/x
-  7. log base e
-  7. cronologia che viene stampato il calcolo quando clicchi su "="
-*/
