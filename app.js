@@ -1,5 +1,6 @@
 const display = document.querySelector(".display");
 const buttonsContainer = document.querySelector(".buttons");
+const clearHistoryBtn = document.querySelector(".clear-history");
 
 const operators = ["+", "-", "×", "÷"];
 const keyOperators = ["+", "-", "*", "/"];
@@ -308,9 +309,8 @@ function resolveSqrt(expression) {
 // ─── Esecuzione ───────────────────────────────────────────────────────────────
 
 function execute() {
+  let expr = display.value;
   try {
-    let expr = display.value;
-
     // ─── Risolve ricorsivamente ln annidati ──────────────────────────────────
 
     let prev;
@@ -360,6 +360,8 @@ function execute() {
     display.value = isFinite(result) && !isNaN(result) ? result : "Errore";
   } catch {
     display.value = "Errore";
+  } finally {
+    addToHistory(expr, display.value);
   }
 }
 
@@ -417,4 +419,40 @@ document.addEventListener("keydown", (e) => {
   if (nums.includes(key)) return firstPrint(key);
   if (keyOperators.slice(0, 2).includes(key)) return singleOperator(key); // + e -
   if (keyMap[key]) keyMap[key]();
+});
+
+// ─── Aggiunta alla cronologia ─────────────────────────────────────────────
+function addToHistory(expr, result) {
+  const list = document.querySelector(".list");
+
+  const li = document.createElement("li");
+
+  const exprSpan = document.createElement("span");
+  exprSpan.className = "hist-expr";
+  exprSpan.textContent = expr;
+
+  const resultSpan = document.createElement("span");
+  resultSpan.className = "hist-result";
+  resultSpan.textContent = result;
+
+  li.appendChild(exprSpan);
+  li.appendChild(resultSpan);
+
+  li.addEventListener("click", () => {
+    display.value = String(result);
+  });
+
+  list.appendChild(li);
+  updateClearButton();
+}
+
+function updateClearButton() {
+  const list = document.querySelector(".list");
+  clearHistoryBtn.classList.toggle("visible", list.children.length > 0);
+}
+
+clearHistoryBtn.addEventListener("click", () => {
+  const list = document.querySelector(".list");
+  list.innerHTML = "";
+  updateClearButton();
 });
