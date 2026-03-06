@@ -53,9 +53,9 @@ calculator/
 No build tools or dependencies required. Just open `index.html` in any modern browser.
 
 ```bash
-git clone https://github.com/your-username/calculator.git
-cd calculator
-open index.html
+git clone https://github.com/RiccardoChen/Calculator.git
+cd Calculator
+code .
 ```
 
 ---
