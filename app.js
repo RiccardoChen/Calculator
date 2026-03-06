@@ -23,6 +23,10 @@ function firstPrint(num) {
     display.value = val.slice(0, -2) + num + ")";
   } else if (val.endsWith("ln()")) {
     display.value = val.slice(0, -1) + num + ")";
+  } else if (val.endsWith("√(")) {
+    display.value += num + ")";
+  } else if (val.endsWith("^")) {
+    display.value += num;
   } else if (val.endsWith(")")) {
     display.value += "×" + num;
   } else {
@@ -36,6 +40,10 @@ function singleOperator(ope) {
   const last = lastChar();
   const penultimate = display.value.slice(-2, -1);
 
+  if (last === "^") {
+    display.value = display.value.slice(0, -1) + ope;
+    return;
+  }
   if (last === "." && isOperator(penultimate)) {
     display.value = display.value.slice(0, -2) + ope;
   } else if (isOperator(last) || last === ".") {
@@ -106,6 +114,29 @@ function showIn() {
   }
 }
 
+function resolveLn(expression) {
+  if (!expression.includes("ln(")) return expression;
+
+  return expression.replace(/ln\(([^()]*)\)/g, (_, inner) => {
+    let innerVal = inner;
+
+    if (innerVal.includes("!")) {
+      if (!Number.isInteger(+innerVal.slice(0, -1))) throw new Error();
+      innerVal = recursive(innerVal.slice(0, -1));
+    }
+
+    if (String(innerVal).includes("%")) {
+      innerVal = percentCalc(String(innerVal));
+    }
+
+    const innerResult = eval(
+      String(innerVal).replaceAll("×", "*").replaceAll("÷", "/"),
+    );
+
+    return Math.log(innerResult);
+  });
+}
+
 // ─── Parentesi tonde ───────────────────────────────────────────────────────────────
 
 function parOpen(p) {
@@ -135,6 +166,145 @@ function parClose(p) {
   }
 }
 
+// ─── 1/x ─────────────────────────────────────────────────────────────────────
+
+function reciprocal() {
+  const expr = display.value;
+
+  if (expr.endsWith(")")) {
+    let depth = 0;
+    let openIndex = -1;
+
+    for (let i = expr.length - 1; i >= 0; i--) {
+      if (expr[i] === ")") depth++;
+      if (expr[i] === "(") depth--;
+      if (depth === 0) {
+        openIndex = i;
+        break;
+      }
+    }
+
+    const before = expr.slice(0, openIndex);
+    const inside = expr.slice(openIndex + 1, -1);
+
+    display.value = before + "(1/(" + inside + "))";
+    return;
+  }
+
+  const match = expr.match(/([0-9.]+)$/);
+  if (match) {
+    const before = expr.slice(0, -match[0].length);
+    display.value = before + "(1/" + match[0] + ")";
+    return;
+  }
+}
+// ─── Power ───────────────────────────────────────────────────────────────
+
+function showPower() {
+  const expr = display.value;
+  const last = lastChar();
+
+  if (isOperator(last) || last === "^") return;
+
+  if (last === ")") {
+    let depth = 0;
+    let openIndex = -1;
+
+    for (let i = expr.length - 1; i >= 0; i--) {
+      if (expr[i] === ")") depth++;
+      if (expr[i] === "(") depth--;
+      if (depth === 0) {
+        openIndex = i;
+        break;
+      }
+    }
+
+    const prefixMatch = expr.slice(0, openIndex).match(/(ln)?$/);
+    const prefixLen = prefixMatch ? prefixMatch[0].length : 0;
+    const before = expr.slice(0, openIndex - prefixLen);
+    const group = expr.slice(openIndex - prefixLen);
+
+    display.value = before + "(" + group + ")^";
+    return;
+  }
+
+  const match = expr.match(/([0-9.]+)$/);
+  if (match) {
+    const before = expr.slice(0, -match[0].length);
+    display.value = before + match[0] + "^";
+    return;
+  }
+} // ─── radice 2 ───────────────────────────────────────────────────────────────
+
+function showSqrt() {
+  const expr = display.value;
+  const last = lastChar();
+
+  if (expr === "0") {
+    display.value = "√(";
+    return;
+  }
+
+  if (isOperator(last) || last === "(") {
+    display.value += "√(";
+    return;
+  }
+
+  if (last === ")") {
+    let depth = 0;
+    let openIndex = -1;
+
+    for (let i = expr.length - 1; i >= 0; i--) {
+      if (expr[i] === ")") depth++;
+      if (expr[i] === "(") depth--;
+      if (depth === 0) {
+        openIndex = i;
+        break;
+      }
+    }
+
+    const prefixMatch = expr.slice(0, openIndex).match(/(ln|√)?$/);
+    const prefixLen = prefixMatch ? prefixMatch[0].length : 0;
+    const before = expr.slice(0, openIndex - prefixLen);
+    const group = expr.slice(openIndex - prefixLen);
+
+    display.value = before + "√(" + group + ")";
+    return;
+  }
+
+  const match = expr.match(/([0-9.]+)$/);
+  if (match) {
+    const before = expr.slice(0, -match[0].length);
+    display.value = before + "√(" + match[0] + ")";
+    return;
+  }
+}
+
+function resolveSqrt(expression) {
+  if (!expression.includes("√(")) return expression;
+
+  return expression.replace(/√\(([^()]*)\)/g, (_, inner) => {
+    let innerVal = inner;
+
+    if (innerVal.includes("!")) {
+      if (!Number.isInteger(+innerVal.slice(0, -1))) throw new Error();
+      innerVal = recursive(innerVal.slice(0, -1));
+    }
+    if (String(innerVal).includes("%")) {
+      innerVal = percentCalc(String(innerVal));
+    }
+
+    const innerResult = eval(
+      String(innerVal)
+        .replaceAll("×", "*")
+        .replaceAll("÷", "/")
+        .replaceAll("^", "**"),
+    );
+
+    return Math.sqrt(innerResult);
+  });
+}
+
 // ─── Esecuzione ───────────────────────────────────────────────────────────────
 
 function execute() {
@@ -142,38 +312,12 @@ function execute() {
     let expr = display.value;
 
     // ─── Risolve ricorsivamente ln annidati ──────────────────────────────────
-    function resolveLn(expression) {
-      // Caso base: nessun ln presente, ritorna l'espressione
-      if (!expression.includes("ln(")) return expression;
 
-      return expression.replace(/ln\(([^()]*)\)/g, (_, inner) => {
-        let innerVal = inner;
-
-        // Calcola fattoriale dentro ln
-        if (innerVal.includes("!")) {
-          if (!Number.isInteger(+innerVal.slice(0, -1))) throw new Error();
-          innerVal = recursive(innerVal.slice(0, -1));
-        }
-
-        // Calcola percentuale dentro ln
-        if (String(innerVal).includes("%")) {
-          innerVal = percentCalc(String(innerVal));
-        }
-
-        // Valuta l'espressione numerica dentro le parentesi
-        const innerResult = eval(
-          String(innerVal).replaceAll("×", "*").replaceAll("÷", "/"),
-        );
-
-        return Math.log(innerResult);
-      });
-    }
-
-    // Continua a risolvere finché ci sono ln annidati
     let prev;
     do {
       prev = expr;
       expr = resolveLn(expr);
+      expr = resolveSqrt(expr);
     } while (expr !== prev && String(expr).includes("ln("));
 
     // ─── Pre-processa ! e % fuori da ln ──────────────────────────────────────
@@ -206,7 +350,12 @@ function execute() {
     }
 
     // ─── Valutazione finale ───────────────────────────────────────────────────
-    const result = eval(String(expr).replaceAll("×", "*").replaceAll("÷", "/"));
+    const result = eval(
+      String(expr)
+        .replaceAll("×", "*")
+        .replaceAll("÷", "/")
+        .replaceAll("^", "**"),
+    );
 
     display.value = isFinite(result) && !isNaN(result) ? result : "Errore";
   } catch {
@@ -229,6 +378,9 @@ buttonsContainer.addEventListener("click", (e) => {
   else if (operation === "ln") showIn();
   else if (operation === "(") parOpen(operation);
   else if (operation === ")") parClose(operation);
+  else if (operation === "1/x") reciprocal();
+  else if (operation === "^") showPower();
+  else if (operation === "√") showSqrt();
   else if (action === "CE") clearEntry();
   else if (action === "rollback") rollBack();
   else if (action === "clear") fullClear();
@@ -248,6 +400,11 @@ const keyMap = {
   "!": () => factorial("!"),
   "%": () => percentage("%"),
   l: showIn,
+  "(": () => parOpen("("),
+  ")": () => parClose(")"),
+  i: () => reciprocal(),
+  r: () => showSqrt(),
+  "^": () => showPower(),
   "*": () => singleOperator("×"),
   "/": () => singleOperator("÷"),
 };
